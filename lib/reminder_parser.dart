@@ -1,17 +1,18 @@
 import 'package:chrono_dart/chrono_dart.dart';
 
-class ParsedReminder {
-  final String text;
-  final DateTime dateTime;
+DateTime? parseDateTime(String input) {
+  final chrono = ChronoParser();
+  final results = chrono.parse(input); // returns List<ParsedResult>
 
-  ParsedReminder(this.text, this.dateTime);
+  if (results.isNotEmpty) {
+    return results.first.date(); // DateTime object
+  }
+
+  return null;
 }
 
-ParsedReminder? parseReminder(String input) {
-  final results = Chrono.parse(input);
-  if (results.isNotEmpty) {
-    final parsedDate = results.first.date();
-    return ParsedReminder(input, parsedDate);
+class ChronoParser {
+  List<ParsedResult> parse(String input) {
+    return Chrono.parse(input);
   }
-  return null;
 }

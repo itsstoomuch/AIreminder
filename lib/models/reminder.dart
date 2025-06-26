@@ -5,10 +5,29 @@ part 'reminder.g.dart';
 @HiveType(typeId: 0)
 class Reminder extends HiveObject {
   @HiveField(0)
-  late String text;
+  String text;
 
   @HiveField(1)
-  late DateTime time;
+  DateTime time;
 
-  Reminder({required this.text, required this.time});
+  @HiveField(2)
+  String? location;
+
+  @HiveField(3)
+  double? latitude;
+
+  @HiveField(4)
+  double? longitude;
+
+  @HiveField(5)
+  bool isLocationBased;
+
+  Reminder({
+    required this.text,
+    required this.time,
+    this.location,
+    this.latitude,
+    this.longitude,
+    this.isLocationBased = false,
+  });
 }

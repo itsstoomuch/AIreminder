@@ -1,0 +1,15 @@
+{
+  "" : {
+    "const-values" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/speech_to_text.build/Objects-normal/arm64/speech_to_text-master.swiftconstvalues",
+    "dependencies" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/speech_to_text.build/Objects-normal/arm64/speech_to_text-master.d",
+    "diagnostics" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/speech_to_text.build/Objects-normal/arm64/speech_to_text-master.dia",
+    "emit-module-dependencies" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/speech_to_text.build/Objects-normal/arm64/speech_to_text-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/speech_to_text.build/Objects-normal/arm64/speech_to_text-master-emit-module.dia",
+    "swift-dependencies" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/speech_to_text.build/Objects-normal/arm64/speech_to_text-master.swiftdeps"
+  },
+  "/Users/atharvrathod/.pub-cache/hosted/pub.dev/speech_to_text-6.6.2/ios/Classes/SwiftSpeechToTextPlugin.swift" : {
+    "index-unit-output-path" : "/Pods.build/Release-iphoneos/speech_to_text.build/Objects-normal/arm64/SwiftSpeechToTextPlugin.o",
+    "llvm-bc" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/speech_to_text.build/Objects-normal/arm64/SwiftSpeechToTextPlugin.bc",
+    "object" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/speech_to_text.build/Objects-normal/arm64/SwiftSpeechToTextPlugin.o"
+  }
+}

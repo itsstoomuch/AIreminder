@@ -1,75 +1,90 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
-
+import 'package:geofence_service/geofence_service.dart';
+import 'package:geofence_service/models/geofence.dart';
+import 'package:geofence_service/models/geofence_radius.dart';
+import 'package:geofence_service/geofence_service.dart';
 import 'models/reminder.dart';
+import 'models/saved_location.dart';
 
 class ReminderProvider extends ChangeNotifier {
-  final FlutterLocalNotificationsPlugin _notificationsPlugin;
   List<Reminder> _reminders = [];
 
-  ReminderProvider(this._notificationsPlugin);
+  final GeofenceService _geofenceService = GeofenceService.instance.setup(
+    interval: 5000,
+    accuracy: 100,
+    loiteringDelayMs: 60000,
+    statusChangeDelayMs: 10000,
+    useActivityRecognition: false,
+    allowMockLocations: false,
+  );
 
   List<Reminder> get reminders => _reminders;
 
   static Future<ReminderProvider> init() async {
-    final plugin = await initPlugin();
-    final provider = ReminderProvider(plugin);
-    await provider._loadReminders();
+    await Hive.openBox<Reminder>('reminders');
+    await Hive.openBox<SavedLocation>('saved_locations');
+
+    final provider = ReminderProvider();
+    provider._reminders = Hive.box<Reminder>('reminders').values.toList();
+    await provider._initializeGeofences();
     return provider;
   }
 
-  static Future<FlutterLocalNotificationsPlugin> initPlugin() async {
-    final plugin = FlutterLocalNotificationsPlugin();
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iOS = DarwinInitializationSettings();
-
-    await plugin.initialize(
-      InitializationSettings(android: android, iOS: iOS),
-    );
-    tz.initializeTimeZones();
-    return plugin;
-  }
-
-  Future<void> _loadReminders() async {
-    final box = await Hive.openBox<Reminder>('remindersBox');
-    _reminders = box.values.toList();
-    notifyListeners();
-  }
-
   Future<void> addReminder(Reminder reminder) async {
+    final box = Hive.box<Reminder>('reminders');
+    await box.add(reminder);
     _reminders.add(reminder);
     notifyListeners();
 
-    final box = await Hive.openBox<Reminder>('remindersBox');
-    await box.add(reminder);
+    if (reminder.isLocationBased &&
+        reminder.latitude != null &&
+        reminder.longitude != null) {
+      final geofence = Geofence(
+        id: 'reminder_${reminder.key}',
+        latitude: reminder.latitude!,
+        longitude: reminder.longitude!,
+        radius: [GeofenceRadius(id: 'radius_100', length: 100)],
+      );
 
-    if (reminder.time.isAfter(DateTime.now())) {
-      await _notificationsPlugin.zonedSchedule(
-        reminder.hashCode,
-        'Reminder',
-        reminder.text,
-        tz.TZDateTime.from(reminder.time, tz.local),
-        const NotificationDetails(
-          android: AndroidNotificationDetails('reminder_channel', 'Reminders',
-              importance: Importance.max),
-          iOS: DarwinNotificationDetails(),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.dateAndTime,
+      _geofenceService.addGeofence(
+        geofence,
       );
     }
+
+    return; // ✅ Fixes the return type error
   }
 
   Future<void> removeReminder(int index) async {
-    final box = await Hive.openBox<Reminder>('remindersBox');
-    final reminder = _reminders.removeAt(index);
-    await box.deleteAt(index);
+    final reminder = _reminders[index];
+
+    if (reminder.isLocationBased) {
+      _geofenceService.removeGeofenceById('reminder_${reminder.key}');
+    }
+
+    await Hive.box<Reminder>('reminders').delete(reminder.key);
+    _reminders.removeAt(index);
     notifyListeners();
-    await _notificationsPlugin.cancel(reminder.hashCode);
+
+    return; // ✅ Just for consistency
+  }
+
+  Future<void> _initializeGeofences() async {
+    for (final reminder in _reminders) {
+      if (reminder.isLocationBased &&
+          reminder.latitude != null &&
+          reminder.longitude != null) {
+        final geofence = Geofence(
+          id: 'reminder_${reminder.key}',
+          latitude: reminder.latitude!,
+          longitude: reminder.longitude!,
+          radius: [GeofenceRadius(id: 'radius_100', length: 100)],
+        );
+
+        _geofenceService.addGeofence(
+          geofence,
+        );
+      }
+    }
   }
 }

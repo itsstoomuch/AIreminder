@@ -1,0 +1,15 @@
+{
+  "" : {
+    "const-values" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/Try.build/Objects-normal/arm64/Try-master.swiftconstvalues",
+    "dependencies" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/Try.build/Objects-normal/arm64/Try-master.d",
+    "diagnostics" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/Try.build/Objects-normal/arm64/Try-master.dia",
+    "emit-module-dependencies" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/Try.build/Objects-normal/arm64/Try-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/Try.build/Objects-normal/arm64/Try-master-emit-module.dia",
+    "swift-dependencies" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/Try.build/Objects-normal/arm64/Try-master.swiftdeps"
+  },
+  "/Users/atharvrathod/reminderai/ios/Pods/Try/Try/trap.swift" : {
+    "index-unit-output-path" : "/Pods.build/Release-iphoneos/Try.build/Objects-normal/arm64/trap.o",
+    "llvm-bc" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/Try.build/Objects-normal/arm64/trap.bc",
+    "object" : "/Users/atharvrathod/reminderai/ios/build/Pods.build/Release-iphoneos/Try.build/Objects-normal/arm64/trap.o"
+  }
+}
