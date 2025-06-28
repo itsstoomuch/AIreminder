@@ -11,93 +11,89 @@ class MapPickerScreen extends StatefulWidget {
 }
 
 class _MapPickerScreenState extends State<MapPickerScreen> {
-  LatLng? selectedPosition;
-  String? locationName;
-  final Set<Marker> _markers = {};
-  late Box<SavedLocation> savedLocationBox;
+  LatLng? _selectedPosition;
+  final TextEditingController _nameController = TextEditingController();
+  Set<Marker> _markers = {};
+  GoogleMapController? _mapController;
 
   @override
   void initState() {
     super.initState();
-    savedLocationBox = Hive.box<SavedLocation>('saved_locations');
     _loadSavedMarkers();
   }
 
-  void _loadSavedMarkers() {
-    _markers.clear();
-    for (var location in savedLocationBox.values) {
-      _markers.add(
-        Marker(
-          markerId: MarkerId(location.name),
-          position: LatLng(location.latitude, location.longitude),
+  Future<void> _loadSavedMarkers() async {
+    final box = Hive.box<SavedLocation>('saved_locations');
+    final locations = box.values.toList();
+
+    setState(() {
+      _markers = locations.map((loc) {
+        return Marker(
+          markerId: MarkerId(loc.name),
+          position: LatLng(loc.latitude, loc.longitude),
           infoWindow: InfoWindow(
-            title: location.name,
-            onTap: () => _showRenameDeleteDialog(location),
+            title: loc.name,
+            onTap: () => _showLocationOptions(loc),
           ),
-        ),
-      );
-    }
-    setState(() {});
+        );
+      }).toSet();
+    });
   }
 
-  void _showRenameDeleteDialog(SavedLocation location) {
-    final TextEditingController _renameController =
-        TextEditingController(text: location.name);
-
-    showDialog(
+  void _showLocationOptions(SavedLocation loc) {
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Edit Location'),
-        content: TextField(
-          controller: _renameController,
-          decoration: const InputDecoration(labelText: 'Rename'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              location.name = _renameController.text.trim();
-              location.save();
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            title: Text("Use '${loc.name}'"),
+            onTap: () {
               Navigator.pop(context);
-              _loadSavedMarkers();
+              Navigator.pop(context, {
+                'position': LatLng(loc.latitude, loc.longitude),
+                'name': loc.name,
+              });
             },
-            child: const Text('Rename'),
           ),
-          TextButton(
-            onPressed: () {
-              location.delete();
+          ListTile(
+            title: const Text("Rename"),
+            onTap: () {
               Navigator.pop(context);
+              _renameLocation(loc);
+            },
+          ),
+          ListTile(
+            title: const Text("Delete"),
+            onTap: () async {
+              Navigator.pop(context);
+              await Hive.box<SavedLocation>('saved_locations').delete(loc.key);
               _loadSavedMarkers();
             },
-            child: const Text('Delete'),
           ),
         ],
       ),
     );
   }
 
-  void _confirmLocation(LatLng position) async {
-    final nameController = TextEditingController();
-
-    await showDialog(
+  void _renameLocation(SavedLocation loc) {
+    final controller = TextEditingController(text: loc.name);
+    showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Save Location"),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(hintText: 'Enter name'),
-        ),
+        title: const Text("Rename Location"),
+        content: TextField(controller: controller),
         actions: [
           TextButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              if (name.isNotEmpty) {
-                savedLocationBox.add(
-                  SavedLocation(
-                    name: name,
-                    latitude: position.latitude,
-                    longitude: position.longitude,
-                  ),
-                );
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                loc.name = newName;
+                await loc.save();
                 Navigator.pop(context);
                 _loadSavedMarkers();
               }
@@ -109,33 +105,73 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     );
   }
 
+  void _showNameDialog() {
+    _nameController.clear();
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Name this location"),
+        content: TextField(
+          controller: _nameController,
+          decoration: const InputDecoration(hintText: "e.g. College Gate"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Cancel
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: _saveNewLocation,
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _saveNewLocation() async {
+    final name = _nameController.text.trim();
+    if (_selectedPosition != null && name.isNotEmpty) {
+      final box = Hive.box<SavedLocation>('saved_locations');
+      final newLoc = SavedLocation(
+        name: name,
+        latitude: _selectedPosition!.latitude,
+        longitude: _selectedPosition!.longitude,
+      );
+      await box.add(newLoc);
+      Navigator.pop(context, {
+        'position': _selectedPosition,
+        'name': name,
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pick a Location')),
+      appBar: AppBar(title: const Text("Pick Location")),
       body: GoogleMap(
-        onTap: (position) {
-          selectedPosition = position;
-          _confirmLocation(position);
-        },
-        markers: _markers,
+        onMapCreated: (controller) => _mapController = controller,
         initialCameraPosition: const CameraPosition(
           target: LatLng(19.0760, 72.8777), // Mumbai
-          zoom: 12,
+          zoom: 14,
         ),
+        markers: _markers,
+        myLocationEnabled: true,
+        myLocationButtonEnabled: true,
+        onTap: (pos) {
+          setState(() {
+            _selectedPosition = pos;
+            _markers.add(
+              Marker(
+                markerId: const MarkerId("new"),
+                position: pos,
+              ),
+            );
+          });
+          _showNameDialog();
+        },
       ),
-      floatingActionButton: selectedPosition != null
-          ? FloatingActionButton.extended(
-              icon: const Icon(Icons.check),
-              label: const Text("Use Selected"),
-              onPressed: () {
-                Navigator.pop(context, {
-                  'position': selectedPosition,
-                  'name': 'Unnamed Location',
-                });
-              },
-            )
-          : null,
     );
   }
 }

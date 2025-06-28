@@ -3,7 +3,6 @@ import 'package:hive/hive.dart';
 import 'package:geofence_service/geofence_service.dart';
 import 'package:geofence_service/models/geofence.dart';
 import 'package:geofence_service/models/geofence_radius.dart';
-import 'package:geofence_service/geofence_service.dart';
 import 'models/reminder.dart';
 import 'models/saved_location.dart';
 
@@ -47,12 +46,8 @@ class ReminderProvider extends ChangeNotifier {
         radius: [GeofenceRadius(id: 'radius_100', length: 100)],
       );
 
-      _geofenceService.addGeofence(
-        geofence,
-      );
+      _geofenceService.addGeofence(geofence);
     }
-
-    return; // ✅ Fixes the return type error
   }
 
   Future<void> removeReminder(int index) async {
@@ -65,8 +60,6 @@ class ReminderProvider extends ChangeNotifier {
     await Hive.box<Reminder>('reminders').delete(reminder.key);
     _reminders.removeAt(index);
     notifyListeners();
-
-    return; // ✅ Just for consistency
   }
 
   Future<void> _initializeGeofences() async {
@@ -81,10 +74,26 @@ class ReminderProvider extends ChangeNotifier {
           radius: [GeofenceRadius(id: 'radius_100', length: 100)],
         );
 
-        _geofenceService.addGeofence(
-          geofence,
-        );
+        _geofenceService.addGeofence(geofence);
       }
+    }
+  }
+
+  /// ✅ Get all saved location names (lowercased for comparison)
+  List<String> getSavedLocationNames() {
+    final box = Hive.box<SavedLocation>('saved_locations');
+    return box.values.map((loc) => loc.name.toLowerCase()).toList();
+  }
+
+  /// ✅ Return coordinates of a saved location by name, or null
+  SavedLocation? getLocationByName(String name) {
+    final box = Hive.box<SavedLocation>('saved_locations');
+    try {
+      return box.values.firstWhere(
+        (loc) => loc.name.toLowerCase() == name.toLowerCase(),
+      );
+    } catch (_) {
+      return null;
     }
   }
 }

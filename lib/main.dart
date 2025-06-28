@@ -1,17 +1,21 @@
-// lib/main.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'reminder_provider.dart';
 import 'models/reminder.dart';
 import 'models/saved_location.dart';
+import 'map_picker_preview.dart';
 import 'map_picker_screen.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'reminder_parser.dart';
+import 'notification_service.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimeZones();
   await Hive.initFlutter();
   Hive.registerAdapter(ReminderAdapter());
   Hive.registerAdapter(SavedLocationAdapter());
@@ -61,9 +65,54 @@ class _ReminderScreenState extends State<ReminderScreen> {
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
+  void _parseAndAutoLinkLocation(String input) {
+    final provider = context.read<ReminderProvider>();
+    for (final name in provider.getSavedLocationNames()) {
+      if (input.toLowerCase().contains(name)) {
+        final match = provider.getLocationByName(name);
+        if (match != null) {
+          setState(() {
+            _selectedLocation = match.name;
+            _selectedLat = match.latitude;
+            _selectedLng = match.longitude;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text("Linked saved location '${match.name}' automatically."),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          break;
+        }
+      }
+    }
+  }
+
+  void _useCurrentLocation() async {
+    final pos = await Geolocator.getCurrentPosition();
+    setState(() {
+      _selectedLat = pos.latitude;
+      _selectedLng = pos.longitude;
+      _selectedLocation = "Current Location";
+    });
+  }
+
   void _addReminder() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+
+    if (isLocationBased &&
+        (_selectedLocation == null ||
+            _selectedLat == null ||
+            _selectedLng == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please select a saved location.'),
+            duration: Duration(seconds: 2)),
+      );
+      return;
+    }
 
     final combined = DateTime(
       _selectedDate.year,
@@ -85,10 +134,13 @@ class _ReminderScreenState extends State<ReminderScreen> {
     context.read<ReminderProvider>().addReminder(reminder);
     _controller.clear();
     setState(() {
+      if (!isLocationBased) {
+        _selectedDate = DateTime.now();
+        _selectedTime = TimeOfDay.now();
+      }
       _selectedLocation = null;
       _selectedLat = null;
       _selectedLng = null;
-      isLocationBased = false;
     });
   }
 
@@ -107,7 +159,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
         builder: (context, snapshot) {
           final distance = snapshot.data;
           final info = distance != null
-              ? '📍 ${item.location ?? "Unknown"}\n🧭 ${(distance / 1000).toStringAsFixed(2)} km away'
+              ? '📍 ${item.location ?? "Unnamed Location"}\n🧭 ${(distance / 1000).toStringAsFixed(2)} km away'
               : '📍 ${item.location ?? "Loading..."}';
           return Text(info, style: const TextStyle(color: Colors.white70));
         },
@@ -151,6 +203,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
                   color: const Color(0xFF2C2C2E),
                   borderRadius: BorderRadius.circular(16),
                 ),
+                onChanged: (val) => _parseAndAutoLinkLocation(val),
               ),
               const SizedBox(height: 12),
               Row(
@@ -189,44 +242,47 @@ class _ReminderScreenState extends State<ReminderScreen> {
               ] else ...[
                 SizedBox(
                   height: 150,
-                  child: _selectedLat != null && _selectedLng != null
-                      ? GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target: LatLng(_selectedLat!, _selectedLng!),
-                            zoom: 14,
-                          ),
-                          markers: {
-                            Marker(
-                              markerId: const MarkerId('selectedLocation'),
-                              position: LatLng(_selectedLat!, _selectedLng!),
-                            ),
-                          },
-                          zoomGesturesEnabled: false,
-                          scrollGesturesEnabled: false,
-                        )
-                      : Center(
-                          child: Text('No location selected',
-                              style: TextStyle(color: Colors.white70)),
-                        ),
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final picked = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const MapPickerScreen()),
-                    );
-                    if (picked != null && picked is Map) {
+                  child: MapPickerPreview(
+                    onLocationSelected: (position, name) {
                       setState(() {
-                        _selectedLat = picked['position']?.latitude;
-                        _selectedLng = picked['position']?.longitude;
-                        _selectedLocation = picked['name'];
+                        _selectedLat = position.latitude;
+                        _selectedLng = position.longitude;
+                        _selectedLocation = name;
                       });
-                    }
-                  },
-                  icon: const Icon(Icons.location_on),
-                  label: Text(_selectedLocation ?? 'Pick Location'),
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton.icon(
+                      onPressed: _useCurrentLocation,
+                      icon:
+                          const Icon(Icons.my_location, color: Colors.white70),
+                      label: const Text("Use Current Location",
+                          style: TextStyle(color: Colors.white70)),
+                    ),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final picked = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const MapPickerScreen()),
+                        );
+                        if (picked != null && picked is Map) {
+                          setState(() {
+                            _selectedLat = picked['position']?.latitude;
+                            _selectedLng = picked['position']?.longitude;
+                            _selectedLocation = picked['name'];
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.map, color: Colors.white70),
+                      label: const Text("Open Full Map",
+                          style: TextStyle(color: Colors.white70)),
+                    ),
+                  ],
                 ),
               ],
               const SizedBox(height: 12),
