@@ -98,22 +98,13 @@ class _ReminderScreenState extends State<ReminderScreen> {
     });
   }
 
-  void _addReminder() {
+  void _addReminder() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    if (isLocationBased &&
-        (_selectedLocation == null ||
-            _selectedLat == null ||
-            _selectedLng == null)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please select a saved location.'),
-            duration: Duration(seconds: 2)),
-      );
-      return;
-    }
+    final provider = context.read<ReminderProvider>();
 
+    // 1️⃣ Combine date + time (fallback for time-based)
     final combined = DateTime(
       _selectedDate.year,
       _selectedDate.month,
@@ -122,19 +113,78 @@ class _ReminderScreenState extends State<ReminderScreen> {
       _selectedTime.minute,
     );
 
+    // 2️⃣ Try geofence parsing
+    final geofence = parseGeofenceTrigger(text);
+
+    String? locationName = _selectedLocation;
+    double? lat = _selectedLat;
+    double? lng = _selectedLng;
+    String? triggerType;
+
+    bool locationMode = isLocationBased;
+
+    if (geofence != null) {
+      locationMode = true; // force location-based
+      triggerType = geofence.triggerType;
+
+      // Try find saved pin
+      final matched = provider.getLocationByName(geofence.locationName);
+      if (matched != null) {
+        locationName = matched.name;
+        lat = matched.latitude;
+        lng = matched.longitude;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                "Linked '${matched.name}' for geofence (${triggerType ?? ''})"),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        // Not found → open map picker
+        final picked = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const MapPickerScreen()),
+        );
+        if (picked != null && picked is Map) {
+          lat = picked['position']?.latitude;
+          lng = picked['position']?.longitude;
+          locationName = picked['name'];
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No location selected. Reminder not saved.'),
+            ),
+          );
+          return;
+        }
+      }
+    }
+
+    if (locationMode && (locationName == null || lat == null || lng == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please select a valid location.'),
+            duration: Duration(seconds: 2)),
+      );
+      return;
+    }
+
     final reminder = Reminder(
       text: text,
       time: combined,
-      location: _selectedLocation,
-      latitude: _selectedLat,
-      longitude: _selectedLng,
-      isLocationBased: isLocationBased,
+      location: locationName,
+      latitude: lat,
+      longitude: lng,
+      isLocationBased: locationMode,
+      triggerType: triggerType,
     );
 
-    context.read<ReminderProvider>().addReminder(reminder);
+    await provider.addReminder(reminder);
+
     _controller.clear();
     setState(() {
-      if (!isLocationBased) {
+      if (!locationMode) {
         _selectedDate = DateTime.now();
         _selectedTime = TimeOfDay.now();
       }

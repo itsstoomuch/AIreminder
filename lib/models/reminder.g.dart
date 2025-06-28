@@ -23,13 +23,14 @@ class ReminderAdapter extends TypeAdapter<Reminder> {
       latitude: fields[3] as double?,
       longitude: fields[4] as double?,
       isLocationBased: fields[5] as bool,
+      triggerType: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Reminder obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.text)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class ReminderAdapter extends TypeAdapter<Reminder> {
       ..writeByte(4)
       ..write(obj.longitude)
       ..writeByte(5)
-      ..write(obj.isLocationBased);
+      ..write(obj.isLocationBased)
+      ..writeByte(6)
+      ..write(obj.triggerType);
   }
 
   @override

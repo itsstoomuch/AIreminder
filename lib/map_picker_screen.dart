@@ -49,7 +49,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
           ListTile(
             title: Text("Use '${loc.name}'"),
             onTap: () {
-              Navigator.pop(context);
+              Navigator.pop(context); // Close bottom sheet
               Navigator.pop(context, {
                 'position': LatLng(loc.latitude, loc.longitude),
                 'name': loc.name,
@@ -117,7 +117,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), // Cancel
+            onPressed: () => Navigator.pop(context), // Close dialog
             child: const Text("Cancel"),
           ),
           TextButton(
@@ -139,6 +139,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         longitude: _selectedPosition!.longitude,
       );
       await box.add(newLoc);
+      Navigator.pop(context); // Close dialog
       Navigator.pop(context, {
         'position': _selectedPosition,
         'name': name,
@@ -149,7 +150,17 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Pick Location")),
+      appBar: AppBar(
+        title: const Text("Pick Location"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () {
+              Navigator.pop(context, null); // Cancel → return null
+            },
+          ),
+        ],
+      ),
       body: GoogleMap(
         onMapCreated: (controller) => _mapController = controller,
         initialCameraPosition: const CameraPosition(
