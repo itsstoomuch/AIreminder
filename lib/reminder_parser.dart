@@ -37,24 +37,26 @@ class GeofenceTrigger {
 /// - "when I go to station"
 /// Returns null if none found.
 GeofenceTrigger? parseGeofenceTrigger(String input) {
-  final lower = input.toLowerCase();
+  final normalized = input.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 
   // Match "when I leave <place>"
-  final leaveMatch = RegExp(r'when i leave (\w+)').firstMatch(lower);
+  final leaveMatch =
+      RegExp(r'when i leave ([a-z0-9 ]+?)(?:$|\b(?:and|then|to)\b)')
+          .firstMatch(normalized);
   if (leaveMatch != null) {
     return GeofenceTrigger(
-      locationName: leaveMatch.group(1)!,
+      locationName: leaveMatch.group(1)!.trim(),
       triggerType: 'EXIT',
     );
   }
 
   // Match "when I go to <place>", "when I reach <place>", "when I arrive at <place>"
   final arriveMatch = RegExp(
-    r'when i (go to|reach|arrive at) (\w+)',
-  ).firstMatch(lower);
+    r'when i (go to|reach|arrive at) ([a-z0-9 ]+?)(?:$|\b(?:and|then|to)\b)',
+  ).firstMatch(normalized);
   if (arriveMatch != null) {
     return GeofenceTrigger(
-      locationName: arriveMatch.group(2)!,
+      locationName: arriveMatch.group(2)!.trim(),
       triggerType: 'ENTER',
     );
   }

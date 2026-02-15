@@ -28,6 +28,7 @@ class ReminderProvider extends ChangeNotifier {
     final provider = ReminderProvider();
     provider._reminders = Hive.box<Reminder>('reminders').values.toList();
     provider._setupGeofenceEventHandler();
+    await provider._initializeGeofences();
     return provider; // ✅ always returns
   }
 
@@ -60,7 +61,6 @@ class ReminderProvider extends ChangeNotifier {
       );
       _geofenceService.addGeofence(geofence);
     }
-    return Future.value(); // ✅ always returns Future<void>
   }
 
   Future<void> removeReminder(int index) async {
@@ -73,7 +73,6 @@ class ReminderProvider extends ChangeNotifier {
     await Hive.box<Reminder>('reminders').delete(reminder.key);
     _reminders.removeAt(index);
     notifyListeners();
-    return Future.value(); // ✅ always returns Future<void>
   }
 
   Future<void> _initializeGeofences() async {
@@ -90,7 +89,6 @@ class ReminderProvider extends ChangeNotifier {
         _geofenceService.addGeofence(geofence);
       }
     }
-    return Future.value(); // ✅ always returns Future<void>
   }
 
   List<String> getSavedLocationNames() {
