@@ -15,7 +15,6 @@ class MapPickerPreview extends StatefulWidget {
 
 class _MapPickerPreviewState extends State<MapPickerPreview> {
   Set<Marker> _markers = {};
-  late GoogleMapController _mapController;
 
   @override
   void initState() {
@@ -48,7 +47,6 @@ class _MapPickerPreviewState extends State<MapPickerPreview> {
   @override
   Widget build(BuildContext context) {
     return GoogleMap(
-      onMapCreated: (controller) => _mapController = controller,
       initialCameraPosition: const CameraPosition(
         target: LatLng(19.0760, 72.8777), // Mumbai
         zoom: 14,

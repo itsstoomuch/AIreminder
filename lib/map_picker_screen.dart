@@ -14,7 +14,6 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   LatLng? _selectedPosition;
   final TextEditingController _nameController = TextEditingController();
   Set<Marker> _markers = {};
-  GoogleMapController? _mapController;
 
   @override
   void initState() {
@@ -162,7 +161,6 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         ],
       ),
       body: GoogleMap(
-        onMapCreated: (controller) => _mapController = controller,
         initialCameraPosition: const CameraPosition(
           target: LatLng(19.0760, 72.8777), // Mumbai
           zoom: 14,
